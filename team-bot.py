@@ -16,30 +16,51 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
+    organiser_id = message.author.id
+    players = []
+    msg_items = message.content.split(' ')
+    msg_items.pop(0)
+    msg = " ".join(msg_items)
+    url = re.search(r'(https?://[^\s]+)', msg)
+    esea_url = re.search(r'(https?://play.esea.net[^\s]+)', msg)
+    
+    print(f'organiser: {organiser_id}')
+    print(f'msg: {msg}')
+    print(f'URL: {url}')
+    print(f'ESEA URL: {esea_url}')
 
+    triggers = ('.esea', '.scrim', '.faceit')
 
-    # ESEA MATCHES
-    if message.content.startswith('.esea'):
-        organiser_id = message.author.id
-        players = []
-        msg_items = message.content.split(' ')
-        msg_items.pop(0)
-        msg = " ".join(msg_items)
-        url = re.search(r'(https?://[^\s]+)', msg)
-        esea_url = re.search(r'(https?://play.esea.net[^\s]+)', msg)
+    if message.content.startswith(triggers):
 
-        if msg:
+        # ESEA
+        if msg and message.content.startswith('.esea'):
+            print('**TRIGGER** = .esea')
             if esea_url:
+                print('**ESEA & ESEA_URL** = TRUE')
                 bot_msg = f'[ESEA] Can you play? See {url.group(0)} for details.'
             elif url and not esea_url:
+                print('**ESEA & URL**')
                 bot_msg = f'Please specify a valid ESEA link'            
             else:
-                bot_msg = f'[ESEA] Can you play an ESEA match on {msg}?'
-            
+                print('**ESEA** = TRUE')
+                bot_msg = f'[ESEA] Can you play an **ESEA** match {msg}?'
+        
+        # FACEIT
+        elif msg and message.content.startswith('.faceit'):
+            bot_msg = f'[FACEIT] Can you play a **FACEIT** match {msg}?'
+
+        # SCRIM
+        elif msg and message.content.startswith('.scrim'):
+            if url and not esea_url:
+                bot_msg = f'[SCRIM] Can you play this scrim? {url}'   
+            else: 
+                bot_msg = f'[SCRIM] Can you play a **scrim** {msg}?'
+
         else:
             await message.channel.send(f"Please specify either a match url or propose a date and time.")
-
-
+            
+        
         async def button_y_cb(interaction):
             msg = interaction.message.content
             msg_id = interaction.message.jump_url

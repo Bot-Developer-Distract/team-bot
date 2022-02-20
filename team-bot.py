@@ -81,7 +81,7 @@ async def on_message(message):
         view.add_item(btn_decline)
 
         # Construct message
-        bot_msg = f"<@{organiser_id}> has requested players. *[Request: {organiser_msg}]*"
+        bot_msg = f"<@886645793031860234> <@{organiser_id}> has requested players. *[Request: {organiser_msg}]*"
         
         if organiser_msg:
             await message.channel.send(bot_msg, view=view)

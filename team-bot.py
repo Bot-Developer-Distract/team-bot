@@ -53,8 +53,6 @@ async def on_message(message):
         msg_items = message.content.split(' ')
         msg_items.pop(0)
         organiser_msg = " ".join(msg_items)
-        url = re.search(r'(https?://[^\s]+)', organiser_msg)
-        esea_url = re.search(r'(https?://play.esea.net[^\s]+)', organiser_msg)
 
         async def btn_accept_cb(interaction):
             responder_id = interaction.user.id
@@ -84,7 +82,9 @@ async def on_message(message):
         bot_msg = f"<@886645793031860234> <@{organiser_id}> has requested players. *[Request: {organiser_msg}]*"
         
         if organiser_msg:
+            # delete organiser message
             await message.channel.send(bot_msg, view=view)
+            await message.delete()
         else:
             await message.channel.send("Please add your request!")
 

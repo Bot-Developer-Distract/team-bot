@@ -1,7 +1,6 @@
 import discord
 # from discord.commands import Option, View
 from discord.ui import Button, View
-import re
 from config import BOT_TOKEN, GUILDS
 
 bot = discord.Bot()
@@ -79,7 +78,7 @@ async def on_message(message):
         view.add_item(btn_decline)
 
         # Construct message
-        bot_msg = f"<@886645793031860234> <@{organiser_id}> has requested players. *[Request: {organiser_msg}]*"
+        bot_msg = f"<@&886645793031860234> <@{organiser_id}> has requested players for **CSGO**.\n*[Request: {organiser_msg}]*"
         
         if organiser_msg:
             # delete organiser message

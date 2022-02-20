@@ -11,115 +11,82 @@ async def on_ready():
     print(f'We have logged in as {bot.user}')
 
 
+def handle_response(d, id, response):
+    if id in d and d[id] != response:
+        # Update the player response
+        d[id] = response
+        print(f'Player response updated to {response}')
+    elif not id in d:
+        # Add the player response
+        d[id] = response
+        print('Player response added')
+    else: 
+        # Do nothing
+        print('Nothing to do!')
+
+def build_message(message, d):
+    msg_list = [message]
+
+    for id in d:
+        if d[id] == 'accepted':
+            emoji = '✅'
+        elif d[id] == 'declined':
+            emoji = '❌'
+        msg_list.append(f"{emoji}<@{id}> has {d[id]}")
+
+    updated_msg = '\n'.join(msg_list)
+    print(updated_msg)
+
+    return updated_msg
+    
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
 
-    organiser_id = message.author.id
-    players = []
-    msg_items = message.content.split(' ')
-    msg_items.pop(0)
-    msg = " ".join(msg_items)
-    url = re.search(r'(https?://[^\s]+)', msg)
-    esea_url = re.search(r'(https?://play.esea.net[^\s]+)', msg)
-    
-    print(f'organiser: {organiser_id}')
-    print(f'msg: {msg}')
-    print(f'URL: {url}')
-    print(f'ESEA URL: {esea_url}')
-
-    triggers = ('.esea', '.scrim', '.faceit')
+    triggers = ('.csgo')
 
     if message.content.startswith(triggers):
 
-        # ESEA
-        if msg and message.content.startswith('.esea'):
-            print('**TRIGGER** = .esea')
-            if esea_url:
-                print('**ESEA & ESEA_URL** = TRUE')
-                bot_msg = f'[ESEA] Can you play? See {url.group(0)} for details.'
-            elif url and not esea_url:
-                print('**ESEA & URL**')
-                bot_msg = f'Please specify a valid ESEA link'            
-            else:
-                print('**ESEA** = TRUE')
-                bot_msg = f'[ESEA] Can you play an **ESEA** match {msg}?'
-        
-        # FACEIT
-        elif msg and message.content.startswith('.faceit'):
-            bot_msg = f'[FACEIT] Can you play a **FACEIT** match {msg}?'
+        organiser_id = message.author.id
+        players = {}
+        msg_items = message.content.split(' ')
+        msg_items.pop(0)
+        organiser_msg = " ".join(msg_items)
+        url = re.search(r'(https?://[^\s]+)', organiser_msg)
+        esea_url = re.search(r'(https?://play.esea.net[^\s]+)', organiser_msg)
 
-        # SCRIM
-        elif msg and message.content.startswith('.scrim'):
-            if url and not esea_url:
-                bot_msg = f'[SCRIM] Can you play this scrim? {url}'   
-            else: 
-                bot_msg = f'[SCRIM] Can you play a **scrim** {msg}?'
+        async def btn_accept_cb(interaction):
+            responder_id = interaction.user.id
+            handle_response(players, responder_id, 'accepted')
+            await interaction.message.edit(content=build_message(bot_msg, players))
+            print(players)
 
-        else:
-            await message.channel.send(f"Please specify either a match url or propose a date and time.")
-            
-        
-        async def button_y_cb(interaction):
-            msg = interaction.message.content
-            msg_id = interaction.message.jump_url
-            new_msg = ''
-            player_yes_id = interaction.user.id
-            player_yes_name = interaction.user.name
+        async def btn_decline_cb(interaction):
+            responder_id = interaction.user.id
+            handle_response(players, responder_id, 'declined')
+            await interaction.message.edit(content=build_message(bot_msg, players))
+            print(players)
 
-            if player_yes_name in players:
-                await message.channel.send(f"<@{player_yes_id}> You have already accepted.")
-            else:
-                players.append(player_yes_name)
-                # await interaction.response.send_message(f"{player_yes} accepted.")
-                if new_msg:
-                    new_msg = f'{new_msg} \n✅ <@{player_yes_id}> accepted.'
-                else:
-                    new_msg = f'{msg} \n✅ <@{player_yes_id}> accepted.'
-                await interaction.message.edit(content=new_msg)
-                
-                notify_organiser = f'<@{organiser_id}> **{player_yes_name}** has accepted the match. {msg_id}'
-                await message.channel.send(content=notify_organiser)
-
-        async def button_n_cb(interaction):
-            msg = interaction.message.content
-            msg_id = interaction.message.jump_url
-            new_msg = ''
-            player_yes_id = interaction.user.id
-            player_yes_name = interaction.user.name
-
-            if player_yes_name in players:
-                for idx, name in enumerate(players):
-                    if player_yes_name == name:
-                        players.pop(idx)
-
-                # await interaction.response.send_message(f"{player_yes} accepted.")
-                if new_msg:
-                    new_msg = f'{new_msg} \n❌ <@{player_yes_id}> declined.'
-                else:
-                    new_msg = f'{msg} \n❌ <@{player_yes_id}> declined.'
-                await interaction.message.edit(content=new_msg)
-                
-                notify_organiser = f'<@{organiser_id}> **{player_yes_name}** has declined the match. {msg_id}'
-                await message.channel.send(content=notify_organiser)
-        
         # Create buttons
-        button_y = Button(label="YES", style=discord.ButtonStyle.success)
-        button_y.callback = button_y_cb
+        btn_accept = Button(label="ACCEPT", style=discord.ButtonStyle.success)
+        btn_accept.callback = btn_accept_cb
 
-        button_n = Button(label="NO", style=discord.ButtonStyle.danger)
-        button_n.callback = button_n_cb
+        btn_decline = Button(label="DECLINE", style=discord.ButtonStyle.danger)
+        btn_decline.callback = btn_decline_cb
         
         # Create View
-        view = View()
-        view.add_item(button_y)
-        view.add_item(button_n)
+        view = View(timeout=None)
+        view.add_item(btn_accept)
+        view.add_item(btn_decline)
+
+        # Construct message
+        bot_msg = f"<@{organiser_id}> has requested players. *[Request: {organiser_msg}]*"
         
-        if msg and url and not esea_url:
-            await message.channel.send(bot_msg)
-        elif msg:
+        if organiser_msg:
             await message.channel.send(bot_msg, view=view)
+        else:
+            await message.channel.send("Please add your request!")
 
 
 bot.run(BOT_TOKEN)

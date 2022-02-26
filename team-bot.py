@@ -16,16 +16,13 @@ def handle_response(message_content, user_id, response=''):
         print(idx, val)
         if str(user_id) in val:
             print("UPDATING")
-            msg_list[idx] = f"{emoji}<@{user_id}> has {response}\n"
+            msg_list[idx] = f"{emoji}<@{user_id}> has {response}"
             responded = True
 
     if not responded:
-        msg_list.append(f"{emoji}<@{user_id}> has {response}\n")
+        msg_list.append(f"{emoji}<@{user_id}> has {response}")
 
     new_msg = '\n'.join(msg_list)
-
-    print('\n\n++RAW MESSAGE++')
-    print(repr(new_msg))
     return new_msg
 
 class PersistentView(discord.ui.View):

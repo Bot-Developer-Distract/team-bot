@@ -13,17 +13,14 @@ def handle_response(message_content, user_id, response=''):
         emoji = '❌'
 
     for idx, val in enumerate(msg_list[2:], 2):
-        print(idx, val)
         if str(user_id) in val:
-            print("UPDATING")
             msg_list[idx] = f"{emoji}<@{user_id}> has {response}"
             responded = True
 
     if not responded:
         msg_list.append(f"{emoji}<@{user_id}> has {response}")
 
-    new_msg = '\n'.join(msg_list)
-    return new_msg
+    return '\n'.join(msg_list)
 
 class PersistentView(discord.ui.View):
     def __init__(self):
@@ -49,7 +46,6 @@ class PersistentViewBot(commands.Bot):
         if not self.persistent_views_added:
             self.add_view(PersistentView())
             self.persistent_views_added = True
-
         print(f"Logged in as {self.user} (ID: {self.user.id})")
         print("------")
 
@@ -66,9 +62,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    triggers = ('.csgo')
-
-    if message.content.startswith(triggers):
+    if message.content.startswith('.csgo'):
 
         organiser_id = message.author.id
         msg_items = message.content.split(' ')

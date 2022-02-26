@@ -1,43 +1,69 @@
 import discord
-# from discord.commands import Option, View
-from discord.ui import Button, View
-from config import BOT_TOKEN, GUILDS
-
-bot = discord.Bot()
-
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
+from discord.ext import commands
+from config import BOT_TOKEN
 
 
-def handle_response(d, id, response):
-    if id in d and d[id] != response:
-        # Update the player response
-        d[id] = response
-        print(f'Player response updated to {response}')
-    elif not id in d:
-        # Add the player response
-        d[id] = response
-        print('Player response added')
-    else: 
-        # Do nothing
-        print('Nothing to do!')
+def handle_response(message_content, user_id, response=''):
+    msg_list = message_content.split('\n')
+    responded = False
 
-def build_message(message, d):
-    msg_list = [message]
+    if response == 'accepted':
+        emoji = '✅'
+    elif response == 'declined':
+        emoji = '❌'
 
-    for id in d:
-        if d[id] == 'accepted':
-            emoji = '✅'
-        elif d[id] == 'declined':
-            emoji = '❌'
-        msg_list.append(f"{emoji}<@{id}> has {d[id]}")
+    for idx, val in enumerate(msg_list[2:], 2):
+        print(idx, val)
+        if str(user_id) in val:
+            print("UPDATING")
+            msg_list[idx] = f"{emoji}<@{user_id}> has {response}\n"
+            responded = True
 
-    updated_msg = '\n'.join(msg_list)
-    print(updated_msg)
+    if not responded:
+        msg_list.append(f"{emoji}<@{user_id}> has {response}\n")
 
-    return updated_msg
-    
+    new_msg = '\n'.join(msg_list)
+
+    print('\n\n++RAW MESSAGE++')
+    print(repr(new_msg))
+    return new_msg
+
+class PersistentView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        print(f'Initialised {self.id}')
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent_view:accept")
+    async def btn_accept_cb(self, button: discord.ui.Button, interaction: discord.Interaction):
+        message_content = handle_response(interaction.message.content, interaction.user.id, response='accepted')
+        await interaction.message.edit(content=message_content)
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, custom_id="persistent_view:decline")
+    async def btn_decline_cb(self, button: discord.ui.Button, interaction: discord.Interaction):
+        message_content = handle_response(interaction.message.content, interaction.user.id, response='declined')
+        await interaction.message.edit(content=message_content)
+
+class PersistentViewBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix=commands.when_mentioned_or("$"))
+        self.persistent_views_added = False
+
+    async def on_ready(self):
+        if not self.persistent_views_added:
+            self.add_view(PersistentView())
+            self.persistent_views_added = True
+
+        print(f"Logged in as {self.user} (ID: {self.user.id})")
+        print("------")
+
+
+bot = PersistentViewBot()
+
+@bot.command()
+@commands.is_owner()
+async def prepare(ctx: commands.Context):
+    await ctx.send("What's your favourite colour?", view=PersistentView())
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -48,44 +74,12 @@ async def on_message(message):
     if message.content.startswith(triggers):
 
         organiser_id = message.author.id
-        players = {}
         msg_items = message.content.split(' ')
         msg_items.pop(0)
         organiser_msg = " ".join(msg_items)
 
-        async def btn_accept_cb(interaction):
-            responder_id = interaction.user.id
-            handle_response(players, responder_id, 'accepted')
-            await interaction.message.edit(content=build_message(bot_msg, players))
-            print(players)
+        bot_msg = f"<@886645793031860234> <@{organiser_id}> has requested players for **CSGO**.\n*[Request: {organiser_msg}]*"
 
-        async def btn_decline_cb(interaction):
-            responder_id = interaction.user.id
-            handle_response(players, responder_id, 'declined')
-            await interaction.message.edit(content=build_message(bot_msg, players))
-            print(players)
-
-        # Create buttons
-        btn_accept = Button(label="ACCEPT", style=discord.ButtonStyle.success)
-        btn_accept.callback = btn_accept_cb
-
-        btn_decline = Button(label="DECLINE", style=discord.ButtonStyle.danger)
-        btn_decline.callback = btn_decline_cb
-        
-        # Create View
-        view = View(timeout=None)
-        view.add_item(btn_accept)
-        view.add_item(btn_decline)
-
-        # Construct message
-        bot_msg = f"<@&886645793031860234> <@{organiser_id}> has requested players for **CSGO**.\n*[Request: {organiser_msg}]*"
-        
-        if organiser_msg:
-            # delete organiser message
-            await message.channel.send(bot_msg, view=view)
-            await message.delete()
-        else:
-            await message.channel.send("Please add your request!")
-
+        await message.channel.send(bot_msg, view=PersistentView())
 
 bot.run(BOT_TOKEN)
